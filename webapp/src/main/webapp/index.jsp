@@ -4,12 +4,12 @@
     <p>Please fill in this form to create an account.</p>
     <hr>
      
-    <label for="Name"><b>Enter Name</b></label>
-    <input type="text" placeholder="Enter Full Name" name="Name" id="Name" required>
+    <label for="Name"><b>Enter Full Name</b></label>
+    <input type="text" placeholder="Enter Name" name="Name" id="Name" required>
     <br>
     
-    <label for="mobile"><b>Enter mobile</b></label>
-    <input type="text" placeholder="Enter moible number" name="mobile" id="mobile" required>
+    <label for="mobile"><b>Enter mobile number</b></label>
+    <input type="text" placeholder="Enter mobile number" name="mobile" id="mobile" required>
     <br>
 
     <label for="email"><b>Enter Email</b></label>
@@ -30,8 +30,15 @@
   <div class="container signin">
     <p>Already have an account? <a href="#">Sign in</a>.</p>
   </div>
+  <h2 style="color:green;">This page was updated successfully using CI/CD </h2>
+   <h2 style="color:blue;">CI/CD Update Test: Build Triggered automatically and Successfully </h2>
+   <h3 style="color:red;">Code Updated Automatically using Jenkins CI/CD!</h3>
+   <h4 style="color:red;">Code is updated on ansible!!!!!!</h3>
+   <h4 style="color:red;">Code is updated on ansible!!!!!!</h3>
+
+
 
    <h1> Thankyou, Happy Learning </h1>
-
+ 
   
 </form>
