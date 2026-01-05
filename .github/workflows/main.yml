@@ -18,8 +18,21 @@ jobs:
         distribution: temurin
         java-version: '17'
 
+    # ✅ Add this debug step
+    - name: Debug project layout
+      run: |
+        pwd
+        ls -la
+        echo "==== root pom.xml (top 25 lines) ===="
+        sed -n '1,25p' pom.xml
+        echo "==== webapp folder ===="
+        ls -la webapp || true
+        echo "==== webapp/pom.xml (top 25 lines) ===="
+        sed -n '1,25p' webapp/pom.xml || true
+
+    # ✅ Build from the root pom explicitly (recommended for multi-module)
     - name: Build with Maven
-      run: mvn clean package -DskipTests
+      run: mvn -B -f pom.xml -pl webapp -am clean package -DskipTests
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v2
