@@ -6,6 +6,11 @@ RUN mvn -B -pl webapp -am clean package -DskipTests
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY --from=build /app/webapp/target/*.jar app.jar
+
+# webapp builds a WAR (because webapp/pom.xml has <packaging>war</packaging>)
+COPY --from=build /app/webapp/target/*.war app.war
+
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","app.jar"]
+
+# NOTE: A WAR is not always runnable with `java -jar` unless it's a Spring Boot executable war.
+ENTRYPOINT ["java","-jar","app.war"]
