@@ -1,0 +1,75 @@
+name: Create branches in multiple repos
+
+on:
+  workflow_dispatch:
+    inputs:
+      jira_key:
+        description: "Jira issue key (e.g. ABC-123)"
+        required: true
+
+jobs:
+  create-branches:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create branches in repos
+        env:
+          GH_TOKEN: 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
+          JIRA_KEY: ${{ github.event.inputs.jira_key }}
+        run: |
+          set -e
+
+          ORG="Nandishn969"
+          BRANCH_NAME="feature/${JIRA_KEY}"
+
+          REPOS=(
+            "hello-world"
+            "New-Actions"
+            "Jira-Cloud"
+          )
+
+          for REPO in "${REPOS[@]}"; do
+            echo "--------------------------------------"
+            echo "Processing repo: $ORG/$REPO"
+
+            # 1️⃣ Get default branch
+            DEFAULT_BRANCH=$(curl -s \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/$ORG/$REPO \
+              | jq -r .default_branch)
+
+            if [ "$DEFAULT_BRANCH" = "null" ] || [ -z "$DEFAULT_BRANCH" ]; then
+              echo "❌ Could not determine default branch for $REPO"
+              continue
+            fi
+
+            echo "Default branch is: $DEFAULT_BRANCH"
+
+            # 2️⃣ Get SHA of default branch
+            BASE_SHA=$(curl -s \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/$ORG/$REPO/git/ref/heads/$DEFAULT_BRANCH \
+              | jq -r .object.sha)
+
+            if [ "$BASE_SHA" = "null" ] || [ -z "$BASE_SHA" ]; then
+              echo "❌ Failed to fetch SHA for $DEFAULT_BRANCH in $REPO"
+              continue
+            fi
+
+            # 3️⃣ Create branch
+            CREATE_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/$ORG/$REPO/git/refs \
+              -d "{\"ref\":\"refs/heads/$BRANCH_NAME\",\"sha\":\"$BASE_SHA\"}")
+
+            if [ "$CREATE_RESPONSE" = "201" ]; then
+              echo "✅ Branch $BRANCH_NAME created in $REPO"
+            elif [ "$CREATE_RESPONSE" = "422" ]; then
+              echo "⚠️ Branch $BRANCH_NAME already exists in $REPO"
+            else
+              echo "❌ Failed to create branch in $REPO (HTTP $CREATE_RESPONSE)"
+            fi
+          done

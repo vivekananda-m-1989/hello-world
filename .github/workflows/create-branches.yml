@@ -1,0 +1,56 @@
+name: Create branches in multiple repos
+
+on:
+  workflow_dispatch:
+    inputs:
+      jira_key:
+        description: "Jira issue key (e.g. ABC-123)"
+        required: true
+      base_branch:
+        description: "Base branch name"
+        required: false
+        default: "main"
+
+jobs:
+  create-branches:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create branches in repos
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          JIRA_KEY: ${{ github.event.inputs.jira_key }}
+          BASE_BRANCH: ${{ github.event.inputs.base_branch }}
+        run: |
+          set -e
+
+          ORG="<YOUR_ORG_NAME>"
+          BRANCH_NAME="feature/${JIRA_KEY}"
+
+          REPOS=(
+            "hello-world"
+            "New Actions"
+          )
+
+          for REPO in "${REPOS[@]}"; do
+            echo "Creating branch in $ORG/$REPO"
+
+            BASE_SHA=$(curl -s \
+              -H "Authorization: token $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$ORG/$REPO/git/ref/heads/$BASE_BRANCH" \
+              | jq -r .object.sha)
+
+            if [ "$BASE_SHA" = "null" ]; then
+              echo "Base branch '$BASE_BRANCH' not found in $REPO"
+              continue
+            fi
+
+            curl -s -X POST \
+              -H "Authorization: token $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$ORG/$REPO/git/refs" \
+              -d "{\"ref\":\"refs/heads/$BRANCH_NAME\",\"sha\":\"$BASE_SHA\"}"
+
+            echo "Branch $BRANCH_NAME created in $REPO"
+          done

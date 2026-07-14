@@ -1,0 +1,74 @@
+name: Commit Message Check
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'bugfix/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commits
+        run: |
+          BRANCH="$GITHUB_REF_NAME"
+          BRANCH_KEY=$(echo "$BRANCH" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.event.after }}"
+
+          echo "Branch: $BRANCH"
+          echo "Branch Key: $BRANCH_KEY"
+          echo ""
+
+          if [ -z "$BRANCH_KEY" ]; then
+            echo "✅ No Jira key in branch name. Skipping."
+            exit 0
+          fi
+
+          # Get commits (push event)
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            COMMITS=$(git log --format="%H|%s" "$AFTER" -10)
+          elif [ -n "$BEFORE" ] && [ -n "$AFTER" ]; then
+            COMMITS=$(git log --format="%H|%s" "$BEFORE..$AFTER")
+          else
+            # Pull request — check all commits in PR
+            COMMITS=$(git log --format="%H|%s" "origin/${{ github.base_ref }}..HEAD")
+          fi
+
+          FAIL=0
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            SHA=$(echo "$line" | cut -d'|' -f1 | cut -c1-7)
+            MSG=$(echo "$line" | cut -d'|' -f2-)
+            KEY=$(echo "$MSG" | grep -oE '[A-Z]+-[0-9]+' | head -1)
+
+            if [ -z "$KEY" ]; then
+              echo "❌ [$SHA] Missing Jira key → \"$MSG\""
+              FAIL=1
+              continue
+            fi
+
+            if echo "$BRANCH" | grep -q "^bugfix/" && [ "$KEY" != "$BRANCH_KEY" ]; then
+              echo "❌ [$SHA] Key $KEY ≠ branch key $BRANCH_KEY → \"$MSG\""
+              FAIL=1
+              continue
+            fi
+
+            echo "✅ [$SHA] $MSG"
+          done <<< "$COMMITS"
+
+          echo ""
+          if [ "$FAIL" -eq 1 ]; then
+            echo "❌ FAILED"
+            exit 1
+          fi
+          echo "✅ ALL COMMITS VALID"
